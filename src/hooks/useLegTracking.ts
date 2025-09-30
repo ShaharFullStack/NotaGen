@@ -75,7 +75,10 @@ export function useLegTracking(
         y -= calibrationRef.current.centerY;
       }
 
-      const distance = Math.sqrt(x * x + y * y) * 1000;
+      // Calculate distance from center (normalized screen coordinates)
+      const distance = Math.sqrt(x * x + y * y);
+
+      // Calculate angle for slice selection
       let angle = Math.atan2(y, x);
       let degrees = (angle * 180 / Math.PI + 360) % 360;
       const sliceAngle = 360 / numSlices;
@@ -91,13 +94,20 @@ export function useLegTracking(
           return;
         }
 
+        // Check if video is ready (has dimensions and has loaded enough data)
+        const video = videoRef.current;
+        if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+          animationFrameId = requestAnimationFrame(detect);
+          return;
+        }
+
         const currentTime = performance.now();
 
-        if (videoRef.current.currentTime !== lastVideoTimeRef.current) {
-          lastVideoTimeRef.current = videoRef.current.currentTime;
+        if (video.currentTime !== lastVideoTimeRef.current) {
+          lastVideoTimeRef.current = video.currentTime;
 
           const results = poseLandmarkerRef.current.detectForVideo(
-            videoRef.current,
+            video,
             currentTime
           );
 
@@ -114,16 +124,23 @@ export function useLegTracking(
             const leftVisible = leftAnkle.visibility > 0.5;
             const rightVisible = rightAnkle.visibility > 0.5;
 
+            // Minimum distance threshold to activate (about 5% of screen)
+            const minDistance = 0.05;
+
             if (leftVisible) {
               const pos = calculateLegPosition(leftAnkle, leftHip);
-              setLeftLegData({ ...pos, isActive: true });
+              // Only activate if leg moved beyond minimum threshold
+              const isActive = pos.distance > minDistance;
+              setLeftLegData({ ...pos, isActive });
             } else {
               setLeftLegData(prev => ({ ...prev, isActive: false }));
             }
 
             if (rightVisible) {
               const pos = calculateLegPosition(rightAnkle, rightHip);
-              setRightLegData({ ...pos, isActive: true });
+              // Only activate if leg moved beyond minimum threshold
+              const isActive = pos.distance > minDistance;
+              setRightLegData({ ...pos, isActive });
             } else {
               setRightLegData(prev => ({ ...prev, isActive: false }));
             }

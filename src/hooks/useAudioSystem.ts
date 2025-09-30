@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
 
 export function useAudioSystem() {
@@ -20,8 +20,7 @@ export function useAudioSystem() {
   useEffect(() => {
     const initializeAudio = async () => {
       try {
-        await Tone.start();
-
+        // Create audio components (Tone.start will be called on first user interaction)
         reverbRef.current = new Tone.Reverb({
           decay: 2.5,
           wet: 0.3
@@ -99,8 +98,13 @@ export function useAudioSystem() {
     return chords;
   };
 
-  const playMelodyNote = (slice: number, expression: number) => {
+  const playMelodyNote = useCallback(async (slice: number, expression: number) => {
     if (!melodySynthRef.current || slice < 0 || slice >= currentScale.length) return;
+
+    // Ensure AudioContext is started
+    if (Tone.context.state !== 'running') {
+      await Tone.start();
+    }
 
     const note = currentScale[slice];
     const volume = -20 + (expression * 15);
@@ -117,17 +121,22 @@ export function useAudioSystem() {
     melodySynthRef.current.volume.value = volume;
     melodySynthRef.current.triggerAttack(note);
     currentMelodyNoteRef.current = note;
-  };
+  }, [currentScale]);
 
-  const stopMelodyNote = () => {
+  const stopMelodyNote = useCallback(() => {
     if (currentMelodyNoteRef.current && melodySynthRef.current) {
       melodySynthRef.current.triggerRelease();
       currentMelodyNoteRef.current = null;
     }
-  };
+  }, []);
 
-  const playHarmonyChord = (slice: number, expression: number) => {
+  const playHarmonyChord = useCallback(async (slice: number, expression: number) => {
     if (!harmonySynthRef.current || slice < 0 || slice >= currentChords.length) return;
+
+    // Ensure AudioContext is started
+    if (Tone.context.state !== 'running') {
+      await Tone.start();
+    }
 
     const chord = currentChords[slice];
     const volume = -25 + (expression * 15);
@@ -144,14 +153,14 @@ export function useAudioSystem() {
     harmonySynthRef.current.volume.value = volume;
     harmonySynthRef.current.triggerAttack(chord);
     currentHarmonyChordRef.current = chord;
-  };
+  }, [currentChords]);
 
-  const stopHarmonyChord = () => {
+  const stopHarmonyChord = useCallback(() => {
     if (currentHarmonyChordRef.current && harmonySynthRef.current) {
       harmonySynthRef.current.releaseAll();
       currentHarmonyChordRef.current = null;
     }
-  };
+  }, []);
 
   const changeScale = (root: string, scaleType: string) => {
     currentRootRef.current = root;

@@ -4,9 +4,10 @@ interface ControlPanelProps {
   onCalibrate: () => void;
   onScaleChange: (root: string, scaleType: string) => void;
   onPresetChange: (preset: string) => void;
+  onTestSound?: () => void;
 }
 
-export default function ControlPanel({ onCalibrate, onScaleChange, onPresetChange }: ControlPanelProps) {
+export default function ControlPanel({ onCalibrate, onScaleChange, onPresetChange, onTestSound }: ControlPanelProps) {
   const [root, setRoot] = useState('C');
   const [scaleType, setScaleType] = useState('major');
 
@@ -70,6 +71,11 @@ export default function ControlPanel({ onCalibrate, onScaleChange, onPresetChang
         <button onClick={onCalibrate} className="primary-btn">
           Calibrate Position
         </button>
+        {onTestSound && (
+          <button onClick={onTestSound} style={{ marginTop: '10px' }}>
+            Test Sound
+          </button>
+        )}
       </div>
 
       <div className="panel-section">

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import ControlPanel from './components/ControlPanel';
 import Visualizer from './components/Visualizer';
@@ -34,20 +34,29 @@ function App() {
     trackingReady
   } = useLegTracking(videoRef, isCalibrated);
 
-  // Handle leg position updates for audio
-  if (leftLegData.isActive && isCalibrated) {
-    const expression = Math.min(leftLegData.distance / 300, 1.0);
-    playMelodyNote(leftLegData.slice, expression);
-  } else {
-    stopMelodyNote();
-  }
+  // Handle left leg audio updates
+  useEffect(() => {
+    if (leftLegData.isActive && isCalibrated && audioReady) {
+      // Map distance to expression (0.05-0.3 range normalized to 0-1)
+      const normalizedDistance = Math.max(0, (leftLegData.distance - 0.05) / 0.25);
+      const expression = Math.min(normalizedDistance, 1.0) * 0.7 + 0.3; // 0.3-1.0 range
+      playMelodyNote(leftLegData.slice, expression);
+    } else {
+      stopMelodyNote();
+    }
+  }, [leftLegData.isActive, leftLegData.slice, leftLegData.distance, isCalibrated, audioReady, playMelodyNote, stopMelodyNote]);
 
-  if (rightLegData.isActive && isCalibrated) {
-    const expression = Math.min(rightLegData.distance / 300, 1.0);
-    playHarmonyChord(rightLegData.slice, expression);
-  } else {
-    stopHarmonyChord();
-  }
+  // Handle right leg audio updates
+  useEffect(() => {
+    if (rightLegData.isActive && isCalibrated && audioReady) {
+      // Map distance to expression (0.05-0.3 range normalized to 0-1)
+      const normalizedDistance = Math.max(0, (rightLegData.distance - 0.05) / 0.25);
+      const expression = Math.min(normalizedDistance, 1.0) * 0.7 + 0.3; // 0.3-1.0 range
+      playHarmonyChord(rightLegData.slice, expression);
+    } else {
+      stopHarmonyChord();
+    }
+  }, [rightLegData.isActive, rightLegData.slice, rightLegData.distance, isCalibrated, audioReady, playHarmonyChord, stopHarmonyChord]);
 
   // Update status based on initialization
   if (audioReady && trackingReady && !isCalibrated) {
@@ -71,6 +80,17 @@ function App() {
   const handlePresetChange = (preset: string) => {
     changeSoundPreset(preset);
     setStatus(`Sound preset: ${preset}`);
+  };
+
+  const handleTestSound = async () => {
+    if (!audioReady) return;
+    setStatus('Testing sound...');
+    // Play a test note (C4) for 1 second
+    await playMelodyNote(0, 0.8);
+    setTimeout(() => {
+      stopMelodyNote();
+      setStatus('Sound test complete');
+    }, 1000);
   };
 
   return (
@@ -101,6 +121,7 @@ function App() {
         onCalibrate={handleCalibrate}
         onScaleChange={handleScaleChange}
         onPresetChange={handlePresetChange}
+        onTestSound={handleTestSound}
       />
     </div>
   );
